@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assembly-CSharp", "Assembly-CSharp.csproj", "{782366ef-6b2b-a564-8944-b8c5f597f613}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdvancedCullingSystem.Runtime", "AdvancedCullingSystem.Runtime.csproj", "{74e058bf-f507-fc88-00ee-f8b4741f93cd}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdvancedCullingSystem.Editor", "AdvancedCullingSystem.Editor.csproj", "{1f895e25-3409-1656-3cb9-8fc746a2979d}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{782366ef-6b2b-a564-8944-b8c5f597f613}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{782366ef-6b2b-a564-8944-b8c5f597f613}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74e058bf-f507-fc88-00ee-f8b4741f93cd}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74e058bf-f507-fc88-00ee-f8b4741f93cd}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1f895e25-3409-1656-3cb9-8fc746a2979d}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1f895e25-3409-1656-3cb9-8fc746a2979d}.Debug|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
