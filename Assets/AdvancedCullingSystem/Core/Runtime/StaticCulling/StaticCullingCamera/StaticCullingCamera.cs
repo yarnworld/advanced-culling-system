@@ -22,6 +22,12 @@ namespace NGS.AdvancedCullingSystem.Static
 
         private VisibilityTree _tree; // 当前相机所在的可见性树
 
+        /// <summary>Whether the camera has a usable baked visibility tree.</summary>
+        public bool HasVisibilityTree => _tree != null && _tree.Root != null;
+
+        /// <summary>Current tolerance used when querying the visibility tree.</summary>
+        public Vector2 Tolerance => _tolerance;
+
         /// <summary>
         /// 重置组件默认值
         /// </summary>

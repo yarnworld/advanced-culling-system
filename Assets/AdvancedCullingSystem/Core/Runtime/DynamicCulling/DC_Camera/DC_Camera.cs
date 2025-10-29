@@ -78,6 +78,18 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         // 相机是否处于启用状态
         private bool _cameraEnabled;
 
+        /// <summary>Number of raycasts that hit a culling collider in the last completed batch.</summary>
+        public int LastRayHitCount { get; private set; }
+
+        /// <summary>Number of raycasts processed in the last completed batch.</summary>
+        public int LastRaycastCount => _raysCount;
+
+        /// <summary>Whether this culling camera was active during the last update.</summary>
+        public bool IsCullingActive => _cameraEnabled;
+
+        /// <summary>Current ray hit ratio, useful for diagnostics and tuning.</summary>
+        public float LastRayHitRatio => _raysCount <= 0 ? 0f : (float)LastRayHitCount / _raysCount;
+
 
         private void Awake()
         {
@@ -177,6 +189,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
 #endif
             #endregion
 
+            int hitCount = 0;
+
             // 正常模式下，仅处理命中逻辑（不绘制射线）
             for (int i = 0; i < _raysCount; i++)
             {
@@ -184,10 +198,13 @@ namespace NGS.AdvancedCullingSystem.Dynamic
 
                 if (collider != null)
                 {
+                    hitCount++;
                     if (_hitablesDic.TryGetValue(collider, out IHitable hitable))
                         hitable.OnHit();
                 }
             }
+
+            LastRayHitCount = hitCount;
         }
 
         private void OnDestroy()
