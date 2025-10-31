@@ -78,16 +78,16 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         // 相机是否处于启用状态
         private bool _cameraEnabled;
 
-        /// <summary>Number of raycasts that hit a culling collider in the last completed batch.</summary>
+        /// <summary>上一批已完成的射线检测中，命中裁剪碰撞体的数量。</summary>
         public int LastRayHitCount { get; private set; }
 
-        /// <summary>Number of raycasts processed in the last completed batch.</summary>
+        /// <summary>上一批已完成的射线检测数量。</summary>
         public int LastRaycastCount => _raysCount;
 
-        /// <summary>Whether this culling camera was active during the last update.</summary>
+        /// <summary>上一帧更新时该裁剪相机是否处于激活状态。</summary>
         public bool IsCullingActive => _cameraEnabled;
 
-        /// <summary>Current ray hit ratio, useful for diagnostics and tuning.</summary>
+        /// <summary>当前射线命中率，用于调试和参数调优。</summary>
         public float LastRayHitRatio => _raysCount <= 0 ? 0f : (float)LastRayHitCount / _raysCount;
 
 

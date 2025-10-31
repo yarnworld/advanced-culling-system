@@ -7,7 +7,7 @@ using NGS.AdvancedCullingSystem.Static;
 namespace NGS.AdvancedCullingSystem.Editor
 {
     /// <summary>
-    /// Scene-wide diagnostic view for validating culling setup and runtime state.
+    /// 用于检查裁剪配置和运行时状态的全场景诊断窗口。
     /// </summary>
     public sealed class CullingVisualizationWindow : EditorWindow
     {
