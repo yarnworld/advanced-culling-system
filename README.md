@@ -44,6 +44,10 @@ Assets/AdvancedCullingSystem/
 
 打开 Unity 菜单 `Tools/NGSTools/Advanced Culling System/Visualization`，可以查看动态裁剪相机的射线命中率、静态裁剪相机的烘焙状态以及 Camera Zone 的场景边界。进入 Play Mode 后，窗口会自动刷新运行时数据；Scene 视图会显示相机标签、区域烘焙状态和命中率颜色提示。
 
+窗口中的性能诊断区域会聚合最近一帧的动态裁剪数据，包括动态相机数量、射线数量、命中数量、射线检测耗时和命中率，并保留最近 120 帧的命中率曲线。绿色曲线表示射线命中率变化；命中率很低通常说明场景遮挡较少或射线预算偏高，命中率很高则需要重点观察裁剪收益和误剔除风险。
+
+点击 `Run validation` 可以检查当前已加载场景中的静态裁剪相机和 Camera Zone 是否缺少可见性树或尚未完成烘焙。建议在提交场景前运行一次检查，并结合 Unity Profiler、Frame Debugger 和 Rendering Statistics 判断裁剪是否真正降低了 CPU、Render Thread 或 GPU 开销。
+
 ## Git 忽略内容
 
 Unity 的 `Library/`、`Logs/`、`obj/` 和 `UserSettings/` 等生成目录不纳入版本控制。

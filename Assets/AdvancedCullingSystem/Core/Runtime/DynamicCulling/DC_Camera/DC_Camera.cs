@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
+using NGS.AdvancedCullingSystem;
 
 namespace NGS.AdvancedCullingSystem.Dynamic
 {
@@ -78,6 +79,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         // 相机是否处于启用状态
         private bool _cameraEnabled;
 
+        private float _batchStartTime;
+
         /// <summary>上一批已完成的射线检测中，命中裁剪碰撞体的数量。</summary>
         public int LastRayHitCount { get; private set; }
 
@@ -134,6 +137,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
             Matrix4x4 matrix = _camera.transform.localToWorldMatrix;
 
             // 每帧发射 _raysCount 条射线
+            _batchStartTime = Time.realtimeSinceStartup;
             for (int i = 0; i < _raysCount; i++)
             {            
                 _rayCommands[i] = UnityAPI.NewRaycastCommand(
@@ -205,6 +209,12 @@ namespace NGS.AdvancedCullingSystem.Dynamic
             }
 
             LastRayHitCount = hitCount;
+            CullingDiagnostics.RecordDynamicCamera(
+                Time.frameCount,
+                _raysCount,
+                LastRayHitCount,
+                (Time.realtimeSinceStartup - _batchStartTime) * 1000f
+            );
         }
 
         private void OnDestroy()
