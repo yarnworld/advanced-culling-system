@@ -8,7 +8,7 @@ namespace NGS.AdvancedCullingSystem.Static
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(CameraZone))]
-    public class CameraZoneEditor : Editor
+    public class CameraZoneEditor : UnityEditor.Editor
     {
         protected new CameraZone target
         {

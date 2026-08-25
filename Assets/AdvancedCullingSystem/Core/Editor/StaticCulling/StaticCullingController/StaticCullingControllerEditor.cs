@@ -7,7 +7,7 @@ using UnityEditor.EditorTools;
 namespace NGS.AdvancedCullingSystem.Static
 {
     [CustomEditor(typeof(StaticCullingController))]
-    public class StaticCullingControllerEditor : Editor
+    public class StaticCullingControllerEditor : UnityEditor.Editor
     {
         protected new StaticCullingController target
         {

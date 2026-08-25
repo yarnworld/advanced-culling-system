@@ -8,7 +8,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(DC_SourceSettings))]
-    public class DC_SourceSettingsEditor : Editor
+    public class DC_SourceSettingsEditor : UnityEditor.Editor
     {
         private new DC_SourceSettings target
         {

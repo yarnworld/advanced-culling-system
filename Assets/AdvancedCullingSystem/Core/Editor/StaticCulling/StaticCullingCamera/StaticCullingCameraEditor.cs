@@ -6,7 +6,7 @@ using UnityEditor;
 namespace NGS.AdvancedCullingSystem.Static
 {
     [CustomEditor(typeof(StaticCullingCamera))]
-    public class StaticCullingCameraEditor : Editor
+    public class StaticCullingCameraEditor : UnityEditor.Editor
     {
         private static bool ShowFrustum;
 

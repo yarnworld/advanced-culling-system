@@ -6,7 +6,7 @@ using UnityEditor;
 namespace NGS.AdvancedCullingSystem.Dynamic
 {
     [CustomEditor(typeof(DC_Controller))]
-    public class DC_ControllerEditor : Editor
+    public class DC_ControllerEditor : UnityEditor.Editor
     {
         private static Dictionary<int, DC_SelectionTool> _indexToSelection;
 

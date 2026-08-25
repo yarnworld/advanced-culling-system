@@ -8,7 +8,7 @@ namespace NGS.AdvancedCullingSystem.Static
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(StaticCullingSource))]
-    public class StaticCullingSourceEditor : Editor
+    public class StaticCullingSourceEditor : UnityEditor.Editor
     {
         protected new StaticCullingSource target
         {
