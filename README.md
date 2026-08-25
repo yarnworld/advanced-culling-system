@@ -40,6 +40,10 @@ Assets/AdvancedCullingSystem/
 
 动态裁剪适合对象和相机持续变化的场景；静态裁剪适合布局稳定、可以接受预烘焙时间的场景。正式项目中建议先在教程场景中验证裁剪边界、阴影和透明材质行为，再接入生产场景。
 
+## 可视化调试
+
+打开 Unity 菜单 `Tools/NGSTools/Advanced Culling System/Visualization`，可以查看动态裁剪相机的射线命中率、静态裁剪相机的烘焙状态以及 Camera Zone 的场景边界。进入 Play Mode 后，窗口会自动刷新运行时数据；Scene 视图会显示相机标签、区域烘焙状态和命中率颜色提示。
+
 ## Git 忽略内容
 
 Unity 的 `Library/`、`Logs/`、`obj/` 和 `UserSettings/` 等生成目录不纳入版本控制。
