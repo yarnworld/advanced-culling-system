@@ -1,0 +1,54 @@
+{
+  "capturedAt": "2026-08-26T15:08:58+08:00",
+  "method": {
+    "unityVersion": "2022.3.62f3c1",
+    "runtime": "Editor Play Mode",
+    "sampleFrames": 300,
+    "camera": "static",
+    "warmup": "12 seconds before snapshot",
+    "repeatCount": 1,
+    "sceneIdentity": "Scene.unity and Scene 1.unity had identical Git blob hashes before runtime bootstrap",
+    "hardware": {
+      "os": "Windows 11 Pro",
+      "cpu": "Intel Core Ultra 7 265",
+      "gpu": "NVIDIA GeForce RTX 5060",
+      "memoryGB": 63.5
+    }
+  },
+  "baseline": {
+    "scene": "Assets/AdvancedCullingSystem/Tutorials/Scenes/1. DynamicCulling Base/Scene.unity",
+    "mode": "ACS disabled",
+    "averageFrameMilliseconds": 11.011150360107422,
+    "p95FrameMilliseconds": 12.439000129699707,
+    "averageCpuFrameMilliseconds": 11.012157440185547,
+    "averageGpuFrameMilliseconds": 5.994775772094727,
+    "batches": 6291,
+    "setPassCalls": 59,
+    "triangles": 78268,
+    "vertices": 156542
+  },
+  "acsDynamic": {
+    "scene": "Assets/AdvancedCullingSystem/Tutorials/Scenes/1. DynamicCulling Base/Scene 1.unity",
+    "mode": "1500 rays/frame, FullDisable",
+    "averageFrameMilliseconds": 2.5830862522125246,
+    "p95FrameMilliseconds": 3.1445999145507814,
+    "averageCpuFrameMilliseconds": 2.583080291748047,
+    "averageGpuFrameMilliseconds": 0.26488831639289858,
+    "averageRaycastBatchWallMilliseconds": 0.3409576416015625,
+    "averageRayHitRatioPercent": 58.38579559326172,
+    "averageCullRatioPercent": 99.57554626464844,
+    "targetCount": 24960,
+    "visibleTargetCount": 106,
+    "culledTargetCount": 24854,
+    "batches": 297,
+    "setPassCalls": 50,
+    "triangles": 6340,
+    "vertices": 12686
+  },
+  "limitations": [
+    "Single run in the Unity Editor, not a Player build",
+    "Static camera only; no fixed motion path or correctness oracle",
+    "Raycast batch value is wall-clock latency from scheduling through LateUpdate processing, not pure worker-job time",
+    "No Unity baked Occlusion Culling A/B was performed"
+  ]
+}
