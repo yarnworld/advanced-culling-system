@@ -1,13 +1,67 @@
 # Advanced Culling System
 
-Unity 2022.3 项目，提供动态裁剪（Dynamic Culling）与静态裁剪（Static Culling）两套可组合的可见性优化方案，适合用于减少大型场景中的渲染和对象更新开销。
+面向大型 Unity 场景的可见性优化框架。项目实现了运行时动态遮挡裁剪和离线静态可见集烘焙，并配套编辑器工作流、运行时诊断、数据导出和可复现 A/B 基准。
 
-## 项目内容
+## 项目亮点
 
-- 动态裁剪：基于相机、遮挡物、Renderer、LODGroup 和自定义目标进行运行时裁剪。
-- 静态裁剪：通过几何树、可见性树和 Baker 预计算场景可见性。
-- Unity Editor 工具：提供 Source、Controller、Camera、Camera Zone 和 Chunk 管理器的 Inspector 与选择工具。
-- 教程场景：包含动态裁剪、实例对象、自定义目标、静态裁剪、自定义目标和透明度场景示例。
+- **双裁剪后端**：动态模式使用 `RaycastCommand + Job System` 处理运行时遮挡；静态模式使用 Geometry Tree、Camera Zone 和 Visibility Tree 烘焙可见集。
+- **目标抽象**：动态后端把 Renderer、LODGroup 和自定义逻辑收敛到 `ICullingTarget`；静态后端通过 `CullingTarget` 抽象扩展 MeshRenderer、LODGroup、Light 和自定义回调。
+- **空间组织与生命周期**：Source Provider 可选择单目标或空间树组织；命中只刷新 Source 生命周期，避免单帧采样缺失造成高频闪烁。
+- **编辑器工具链**：包含 Controller、Camera、Source、Camera Zone、Chunk 的 Inspector、选择器、烘焙和配置验证工具。
+- **可观测性**：诊断模块旁路采集 300 帧帧时、P95、CPU/GPU、真实裁剪率和 Rendering Statistics，可导出 JSON/CSV。
+- **可复现验证**：使用内容完全一致的场景分别运行 ACS Off/On，原始结果随仓库保存，不只展示效果截图。
+
+## 架构
+
+```mermaid
+flowchart LR
+    Camera[Camera] --> Dynamic[DC_Camera<br/>视锥采样]
+    Dynamic --> Jobs[RaycastCommand<br/>Job 批处理]
+    Jobs --> Source[DC_Source<br/>可见生命周期]
+
+    Geometry[场景几何] --> Baker[Static Culling Baker]
+    Baker --> GTree[Geometry Tree]
+    GTree --> VTree[Visibility Tree / Camera Zone]
+    VTree --> StaticTarget[CullingTarget]
+    StaticTarget --> StaticAdapters[Mesh / LOD / Light / Custom]
+
+    Source --> DynamicTarget[ICullingTarget]
+    DynamicTarget --> Renderer[Renderer Adapter]
+    DynamicTarget --> LOD[LODGroup Adapter]
+    DynamicTarget --> Custom[Custom Adapter]
+
+    Dynamic -.遥测.-> Diagnostics[CullingDiagnostics]
+    DynamicTarget -.状态.-> Diagnostics
+    Diagnostics --> Window[Visualization / JSON / CSV]
+```
+
+核心设计是把“如何判断可见”与“目标如何响应”分离。动态后端通过 `ICullingTarget` 驱动目标，静态后端通过 `CullingTarget` 层次驱动目标；两条后端都将 Renderer、LODGroup、Light 或业务回调封装在 Adapter 内，使空间查询与具体显隐行为保持独立。
+
+运行时和编辑器代码严格分离在 `Core/Runtime` 与 `Core/Editor`。射线方向和 `NativeArray` 持久化复用，批量调度 Physics Job；诊断历史使用固定长度环形缓冲区，目标数量采用增量统计，不参与实际裁剪决策。
+
+## 性能实测
+
+项目提供一组内容逐字节相同的 A/B 场景：
+
+- `Scene.unity`：Unity 默认视锥裁剪，ACS 关闭；
+- `Scene 1.unity`：相同几何，在加载后自动启用 ACS Dynamic，`1500 rays/frame + FullDisable`。
+
+2026-08-26 在 Unity `2022.3.62f3c1` Editor Play Mode、Game View 静止相机下，预热后采集最近 300 帧。测试机为 Windows 11、Intel Core Ultra 7 265、RTX 5060、64 GB RAM。
+
+| 指标 | ACS 关闭 | ACS Dynamic | 变化 |
+| --- | ---: | ---: | ---: |
+| 平均帧时 | 11.01 ms | 2.58 ms | -76.5% |
+| P95 帧时 | 12.44 ms | 3.14 ms | -74.7% |
+| CPU Frame Timing | 11.01 ms | 2.58 ms | -76.5% |
+| GPU Frame Timing | 5.99 ms | 0.26 ms | -95.6% |
+| Batches | 6,291 | 297 | -95.3% |
+| SetPass | 59 | 50 | -15.3% |
+| Triangles | 78,268 | 6,340 | -91.9% |
+| Vertices | 156,542 | 12,686 | -91.9% |
+| 射线批次墙钟耗时 | 0 | 0.341 ms | +0.341 ms |
+| 目标（可见 / 总数） | 未注册 | 106 / 24,960 | 裁剪 24,854（99.58%） |
+
+原始机器可读结果见 [`docs/benchmarks/dynamic-base-2026-08-26.json`](docs/benchmarks/dynamic-base-2026-08-26.json)。结果表明，在该高遮挡静止视角中，减少渲染工作量的收益明显高于射线成本。该数据是单轮 Editor 参考值，不代表跨机器、移动相机或 Player Build 的通用结论。
 
 ## 环境要求
 
@@ -54,30 +108,6 @@ Assets/AdvancedCullingSystem/
 
 需要特别注意：射线命中率不等于裁剪率。命中率描述采样射线碰到 Collider 的比例；裁剪率描述 ACS 实际隐藏的目标比例。判断收益应优先看裁剪率、帧时和 Rendering Statistics。
 
-## 可复现实测结果
-
-项目提供一组内容逐字节相同的 A/B 场景：
-
-- `Scene.unity`：Unity 默认视锥裁剪，ACS 关闭；
-- `Scene 1.unity`：相同几何，在加载后自动启用 ACS Dynamic，`1500 rays/frame + FullDisable`。
-
-2026-08-26 在 Unity `2022.3.62f3c1` Editor Play Mode、Game View 静止相机下，预热后采集最近 300 帧。测试机为 Windows 11、Intel Core Ultra 7 265、RTX 5060、64 GB RAM。以下是同一编辑器会话中的单轮参考结果：
-
-| 指标 | ACS 关闭 | ACS Dynamic | 变化 |
-| --- | ---: | ---: | ---: |
-| 平均帧时 | 11.01 ms | 2.58 ms | -76.5% |
-| P95 帧时 | 12.44 ms | 3.14 ms | -74.7% |
-| CPU Frame Timing | 11.01 ms | 2.58 ms | -76.5% |
-| GPU Frame Timing | 5.99 ms | 0.26 ms | -95.6% |
-| Batches | 6,291 | 297 | -95.3% |
-| SetPass | 59 | 50 | -15.3% |
-| Triangles | 78,268 | 6,340 | -91.9% |
-| Vertices | 156,542 | 12,686 | -91.9% |
-| 射线批次墙钟耗时 | 0 | 0.341 ms | +0.341 ms |
-| 目标（可见 / 总数） | 未注册 | 106 / 24,960 | 裁剪 24,854（99.58%） |
-
-原始机器可读结果见 [`docs/benchmarks/dynamic-base-2026-08-26.json`](docs/benchmarks/dynamic-base-2026-08-26.json)。这组数据证明该高遮挡静止视角下“减少渲染工作量的收益大于射线成本”，但它不是跨机器结论，也没有覆盖移动相机、误剔除、开放场景或 Player Build；正式性能结论仍应使用 Profiler、固定轨迹和多轮 Median/P95。
-
 ## 与 Unity 原生裁剪的区别
 
 | 维度 | Unity 原生 Occlusion Culling | Advanced Culling System |
@@ -89,17 +119,7 @@ Assets/AdvancedCullingSystem/
 | 正确性特征 | 成熟、保守、引擎级多相机集成 | 有限采样可能漏掉小目标或快速运动，需要生命周期和误剔除测试 |
 | 当前可视化 | cell、portal、visibility line | 裁剪率/命中率/帧时/渲染统计；静态树解释仍较弱 |
 
-因此 ACS 不是 Unity 原生方案的“更快替代品”。它更适合动态遮挡物、非 Renderer 逻辑目标，或希望把动态射线与自定义静态 PVS 组合起来的项目；稳定室内几何仍应优先实测 Unity 原生烘焙方案。
-
-## 与开源方案的区别和差距
-
-| 项目 | 路线 | ACS 的优势 | ACS 的主要差距 |
-| --- | --- | --- | --- |
-| [mackysoft/Vision](https://github.com/mackysoft/Vision) | 包装 Unity `CullingGroup` | 自有动态遮挡与静态可见树，目标类型更丰富 | 缺少距离带和统一 VisibilityState；射线成本更高 |
-| [GPU Based Occlusion Culling](https://github.com/przemyslawzaworski/Unity-GPU-Based-Occlusion-Culling) | GPU 包围盒深度测试后回读 CPU | 支持 LODGroup、自定义目标、阴影策略和较完整编辑器工作流 | 没有真正的屏幕空间可见性后端；Physics 采样不如像素判定直接 |
-| [Unity Virtual Mesh](https://github.com/Unity-Technologies/com.unity.virtualmesh) | Hi-Z、cluster/meshlet、GPU 间接绘制与流送 | Unity 2022.3/GameObject/非 URP 专属，接入成本低 | 没有 Hi-Z、GPU 批量测试、cluster LOD、Indirect 和页面流送 |
-
-当前最关键的后续工作是：固定相机轨迹与多轮 Benchmark Runner、误剔除 Oracle、多相机可见性合并、动态目标原因着色、静态树当前 cell/可见集可视化，以及把同帧 `Complete()` 改为可验证的跨帧流水线。完整源码调研和优先级见 [`docs/research/culling-system-comparison.md`](docs/research/culling-system-comparison.md)。
+因此本项目不是对 Unity 原生方案的简单封装或替换，而是补充运行时动态遮挡、自定义逻辑目标和可组合静态可见集。选择哪条后端取决于场景是否稳定、遮挡物是否动态以及目标是否局限于 Renderer。
 
 点击 `Run validation` 可以检查静态裁剪相机和 Camera Zone 是否缺少可见性树或尚未完成烘焙。提交场景前建议运行一次，并结合 Unity Profiler、Frame Debugger 和 Rendering Statistics 验证实际收益。
 
