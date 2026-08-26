@@ -33,6 +33,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         {
             for (int i = 0; i < _renderers.Length; i++)
                 _renderers[i].enabled = true;
+
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), true);
         }
 
         /// <summary>
@@ -43,6 +45,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         {
             for (int i = 0; i < _renderers.Length; i++)
                 _renderers[i].enabled = false;
+
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), false);
         }
     }
 }

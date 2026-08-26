@@ -30,6 +30,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         public override void MakeVisible()
         {
             _renderer.enabled = true;
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), true);
         }
 
         /// <summary>
@@ -39,6 +40,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         public override void MakeInvisible()
         {
             _renderer.enabled = false;
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), false);
         }
     }
 }

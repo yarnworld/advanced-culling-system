@@ -35,6 +35,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         public override void MakeVisible()
         {
             _renderer.shadowCastingMode = _shadowMode;
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), true);
         }
 
         /// <summary>
@@ -44,6 +45,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         public override void MakeInvisible()
         {
             _renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), false);
         }
     }
 }

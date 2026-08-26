@@ -54,6 +54,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         public void MakeVisible()
         {
             _onVisible?.Invoke(this);
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), true);
         }
 
         /// <summary>
@@ -63,6 +64,7 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         public void MakeInvisible()
         {
             _onInvisible?.Invoke(this);
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), false);
         }
     }
 

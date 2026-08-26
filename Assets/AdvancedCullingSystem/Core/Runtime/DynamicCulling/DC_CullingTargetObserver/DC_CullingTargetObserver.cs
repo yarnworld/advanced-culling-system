@@ -33,6 +33,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         /// </summary>
         private void OnDestroy()
         {
+            CullingDiagnostics.UnregisterTarget(gameObject.GetInstanceID());
+
             // 如果场景未加载完成，直接返回
             if (!gameObject.scene.isLoaded)
                 return;

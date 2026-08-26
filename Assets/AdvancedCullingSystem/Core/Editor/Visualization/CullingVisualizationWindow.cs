@@ -1,6 +1,11 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using NGS.AdvancedCullingSystem.Dynamic;
 using NGS.AdvancedCullingSystem.Static;
 using NGS.AdvancedCullingSystem;
@@ -24,6 +29,12 @@ namespace NGS.AdvancedCullingSystem.Editor
         private static void Open()
         {
             GetWindow<CullingVisualizationWindow>("Culling Visualization");
+        }
+
+        [MenuItem("Tools/NGSTools/Advanced Culling System/Log Current Diagnostics")]
+        private static void LogCurrentDiagnostics()
+        {
+            Debug.Log("[ACS-DIAGNOSTICS] " + BuildJsonReport(false));
         }
 
         private void OnEnable()
@@ -73,20 +84,58 @@ namespace NGS.AdvancedCullingSystem.Editor
         {
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("性能诊断", EditorStyles.boldLabel);
+
+            if (!EditorApplication.isPlaying)
+            {
+                EditorGUILayout.HelpBox("尚未采样：请进入 Play Mode。编辑模式下的零值不是性能结果。", MessageType.Warning);
+                return;
+            }
+
+            if (!CullingDiagnostics.HasSamples)
+            {
+                EditorGUILayout.HelpBox("正在等待第一帧诊断数据。", MessageType.Info);
+                return;
+            }
+
             CullingDiagnostics.FrameSample sample = CullingDiagnostics.Current;
+            CullingDiagnostics.Summary summary = CullingDiagnostics.GetSummary();
             EditorGUILayout.LabelField("帧号", sample.Frame.ToString());
             EditorGUILayout.LabelField("动态相机数", sample.CameraCount.ToString());
             EditorGUILayout.LabelField("射线数量", sample.RaycastCount.ToString());
             EditorGUILayout.LabelField("射线命中数", sample.HitCount.ToString());
-            EditorGUILayout.LabelField("射线耗时", sample.RaycastMilliseconds.ToString("0.000") + " ms");
+            EditorGUILayout.LabelField("射线批次延迟", sample.RaycastMilliseconds.ToString("0.000") + " ms");
             Rect ratioRect = GUILayoutUtility.GetRect(18f, 18f);
             EditorGUI.ProgressBar(ratioRect, sample.HitRatio, "命中率 " + (sample.HitRatio * 100f).ToString("0.0") + "%");
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("注册目标", sample.TargetCount.ToString());
+            EditorGUILayout.LabelField("实际可见目标", sample.VisibleTargetCount.ToString());
+            EditorGUILayout.LabelField("实际裁剪目标", sample.CulledTargetCount.ToString());
+            EditorGUILayout.LabelField("本帧显隐切换", sample.VisibilityChangeCount.ToString());
+            Rect cullRect = GUILayoutUtility.GetRect(18f, 18f);
+            EditorGUI.ProgressBar(cullRect, sample.CullRatio, "实际裁剪率 " + (sample.CullRatio * 100f).ToString("0.0") + "%");
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("当前帧耗时", sample.FrameMilliseconds.ToString("0.00") + " ms");
+            EditorGUILayout.LabelField("平均帧耗时", summary.AverageFrameMilliseconds.ToString("0.00") + " ms");
+            EditorGUILayout.LabelField("P95 帧耗时", summary.P95FrameMilliseconds.ToString("0.00") + " ms");
+            EditorGUILayout.LabelField("CPU/GPU 帧耗时", FormatTiming(summary.AverageCpuFrameMilliseconds) + " / " + FormatTiming(summary.AverageGpuFrameMilliseconds));
+            EditorGUILayout.LabelField("Batches / SetPass", UnityStats.batches + " / " + UnityStats.setPassCalls);
+            EditorGUILayout.LabelField("Triangles / Vertices", UnityStats.triangles + " / " + UnityStats.vertices);
+            EditorGUILayout.HelpBox("射线命中率表示采样射线撞到 Collider 的比例，不等于对象裁剪率。判断收益应优先看实际裁剪率、帧时间、Batches 和 Triangles。", MessageType.Info);
 
             if (_showHistory)
                 DrawHistoryGraph();
 
-            if (GUILayout.Button("清空性能历史"))
-                CullingDiagnostics.Clear();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("导出 JSON 摘要"))
+                    ExportJson();
+                if (GUILayout.Button("导出 CSV 历史"))
+                    ExportCsv();
+                if (GUILayout.Button("清空历史"))
+                    CullingDiagnostics.Clear();
+            }
         }
 
         private void DrawHistoryGraph()
@@ -94,22 +143,120 @@ namespace NGS.AdvancedCullingSystem.Editor
             Rect rect = GUILayoutUtility.GetRect(0f, 90f, GUILayout.ExpandWidth(true));
             EditorGUI.DrawRect(rect, new Color(0.08f, 0.08f, 0.08f));
             Handles.BeginGUI();
-            Handles.color = new Color(0.2f, 0.9f, 0.4f, 1f);
-            Vector3 previous = Vector3.zero;
+            Vector3 previousHit = Vector3.zero;
+            Vector3 previousCull = Vector3.zero;
+            Vector3 previousFrame = Vector3.zero;
             bool hasPrevious = false;
             for (int i = 0; i < CullingDiagnostics.SampleCount; i++)
             {
                 CullingDiagnostics.FrameSample sample = CullingDiagnostics.GetHistory(i);
                 float x = rect.x + rect.width * (i + 1) / Mathf.Max(1f, CullingDiagnostics.HistoryLength);
-                float y = rect.yMax - Mathf.Clamp01(sample.HitRatio) * rect.height;
-                Vector3 point = new Vector3(x, y, 0f);
+                Vector3 hitPoint = new Vector3(x, rect.yMax - Mathf.Clamp01(sample.HitRatio) * rect.height, 0f);
+                Vector3 cullPoint = new Vector3(x, rect.yMax - Mathf.Clamp01(sample.CullRatio) * rect.height, 0f);
+                Vector3 framePoint = new Vector3(x, rect.yMax - Mathf.Clamp01(sample.FrameMilliseconds / 33.33f) * rect.height, 0f);
                 if (hasPrevious)
-                    Handles.DrawLine(previous, point);
-                previous = point;
+                {
+                    Handles.color = new Color(0.2f, 0.9f, 0.4f, 1f);
+                    Handles.DrawLine(previousHit, hitPoint);
+                    Handles.color = new Color(0.2f, 0.65f, 1f, 1f);
+                    Handles.DrawLine(previousCull, cullPoint);
+                    Handles.color = new Color(1f, 0.6f, 0.15f, 1f);
+                    Handles.DrawLine(previousFrame, framePoint);
+                }
+                previousHit = hitPoint;
+                previousCull = cullPoint;
+                previousFrame = framePoint;
                 hasPrevious = true;
             }
             Handles.EndGUI();
-            GUI.Label(new Rect(rect.x + 4f, rect.y + 4f, 180f, 18f), "绿色：射线命中率历史");
+            GUI.Label(new Rect(rect.x + 4f, rect.y + 4f, rect.width - 8f, 18f), "绿：命中率  蓝：裁剪率  橙：帧耗时（33.3ms 满刻度）");
+        }
+
+        private static string FormatTiming(float milliseconds)
+        {
+            return milliseconds > 0.001f ? milliseconds.ToString("0.00") + " ms" : "不可用";
+        }
+
+        private static string BuildJsonReport(bool prettyPrint)
+        {
+            CullingDiagnostics.Summary summary = CullingDiagnostics.GetSummary();
+            DiagnosticReport report = new DiagnosticReport
+            {
+                generatedAtUtc = DateTime.UtcNow.ToString("O"),
+                unityVersion = Application.unityVersion,
+                scene = SceneManager.GetActiveScene().path,
+                sampleCount = summary.SampleCount,
+                averageFrameMilliseconds = summary.AverageFrameMilliseconds,
+                p95FrameMilliseconds = summary.P95FrameMilliseconds,
+                averageCpuFrameMilliseconds = summary.AverageCpuFrameMilliseconds,
+                averageGpuFrameMilliseconds = summary.AverageGpuFrameMilliseconds,
+                averageRaycastBatchMilliseconds = summary.AverageRaycastMilliseconds,
+                averageRayHitRatioPercent = summary.AverageHitRatio * 100f,
+                averageCullRatioPercent = summary.AverageCullRatio * 100f,
+                targetCount = summary.TargetCount,
+                visibleTargetCount = summary.VisibleTargetCount,
+                culledTargetCount = summary.CulledTargetCount,
+                batches = UnityStats.batches,
+                setPassCalls = UnityStats.setPassCalls,
+                triangles = UnityStats.triangles,
+                vertices = UnityStats.vertices
+            };
+            return JsonUtility.ToJson(report, prettyPrint);
+        }
+
+        private static void ExportJson()
+        {
+            string path = EditorUtility.SaveFilePanel("保存裁剪诊断摘要", Application.dataPath, "culling-diagnostics.json", "json");
+            if (!string.IsNullOrEmpty(path))
+                File.WriteAllText(path, BuildJsonReport(true), new UTF8Encoding(false));
+        }
+
+        private static void ExportCsv()
+        {
+            string path = EditorUtility.SaveFilePanel("保存裁剪诊断历史", Application.dataPath, "culling-diagnostics.csv", "csv");
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            StringBuilder csv = new StringBuilder();
+            csv.AppendLine("frame,frame_ms,cpu_frame_ms,gpu_frame_ms,cameras,raycasts,hits,hit_ratio,raycast_batch_ms,targets,visible,culled,cull_ratio,visibility_changes");
+            for (int i = 0; i < CullingDiagnostics.SampleCount; i++)
+            {
+                CullingDiagnostics.FrameSample sample = CullingDiagnostics.GetHistory(i);
+                csv.Append(sample.Frame).Append(',')
+                    .Append(sample.FrameMilliseconds.ToString("0.000", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sample.CpuFrameMilliseconds.ToString("0.000", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sample.GpuFrameMilliseconds.ToString("0.000", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sample.CameraCount).Append(',').Append(sample.RaycastCount).Append(',').Append(sample.HitCount).Append(',')
+                    .Append(sample.HitRatio.ToString("0.0000", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sample.RaycastMilliseconds.ToString("0.000", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sample.TargetCount).Append(',').Append(sample.VisibleTargetCount).Append(',').Append(sample.CulledTargetCount).Append(',')
+                    .Append(sample.CullRatio.ToString("0.0000", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sample.VisibilityChangeCount).AppendLine();
+            }
+            File.WriteAllText(path, csv.ToString(), new UTF8Encoding(false));
+        }
+
+        [Serializable]
+        private sealed class DiagnosticReport
+        {
+            public string generatedAtUtc;
+            public string unityVersion;
+            public string scene;
+            public int sampleCount;
+            public float averageFrameMilliseconds;
+            public float p95FrameMilliseconds;
+            public float averageCpuFrameMilliseconds;
+            public float averageGpuFrameMilliseconds;
+            public float averageRaycastBatchMilliseconds;
+            public float averageRayHitRatioPercent;
+            public float averageCullRatioPercent;
+            public int targetCount;
+            public int visibleTargetCount;
+            public int culledTargetCount;
+            public int batches;
+            public int setPassCalls;
+            public int triangles;
+            public int vertices;
         }
 
         private void DrawValidation()
@@ -207,7 +354,7 @@ namespace NGS.AdvancedCullingSystem.Editor
 
         private void SelectCullingCameras()
         {
-            List<Object> selection = new List<Object>();
+            List<UnityEngine.Object> selection = new List<UnityEngine.Object>();
             selection.AddRange(FindObjectsOfType<DC_Camera>(true));
             selection.AddRange(FindObjectsOfType<StaticCullingCamera>(true));
             Selection.objects = selection.ToArray();

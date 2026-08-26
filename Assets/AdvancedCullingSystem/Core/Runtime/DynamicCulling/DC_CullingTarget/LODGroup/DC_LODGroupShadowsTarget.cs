@@ -38,6 +38,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         {
             for (int i = 0; i < _renderers.Length; i++)
                 _renderers[i].shadowCastingMode = _shadowMode;
+
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), true);
         }
 
         /// <summary>
@@ -48,6 +50,8 @@ namespace NGS.AdvancedCullingSystem.Dynamic
         {
             for (int i = 0; i < _renderers.Length; i++)
                 _renderers[i].shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+
+            CullingDiagnostics.ReportTargetState(GameObject.GetInstanceID(), false);
         }
     }
 }
